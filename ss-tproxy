@@ -4,8 +4,6 @@ ss_tproxy_config='/etc/ss-tproxy/ss-tproxy.conf'
 PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 
 [ ! -f "$ss_tproxy_config"  ] && { echo "[ERR] No such file or directory: '$ss_tproxy_config'"  1>&2; exit 1; } || source "$ss_tproxy_config"
-[ ! -f "$file_gfwlist_txt"  ] && { echo "[ERR] No such file or directory: '$file_gfwlist_txt'"  1>&2; exit 1; }
-[ ! -f "$file_gfwlist_ext"  ] && { echo "[ERR] No such file or directory: '$file_gfwlist_ext'"  1>&2; exit 1; }
 [ ! -f "$file_chnroute_txt" ] && { echo "[ERR] No such file or directory: '$file_chnroute_txt'" 1>&2; exit 1; }
 [ ! -f "$file_chnroute_set" ] && { echo "[ERR] No such file or directory: '$file_chnroute_set'" 1>&2; exit 1; }
 
@@ -16,50 +14,15 @@ function check_command {
 
     command -v ip      &>/dev/null || { echo "[ERR] Command not found: 'ip'"      1>&2; exit 1; }
     command -v dnsmasq &>/dev/null || { echo "[ERR] Command not found: 'dnsmasq'" 1>&2; exit 1; }
-
-    case "$mode" in
-        gfwlist)
-            command -v curl   &>/dev/null || { echo "[WRN] Command not found: 'curl'"   1>&2;         }
-            command -v base64 &>/dev/null || { echo "[WRN] Command not found: 'base64'" 1>&2;         }
-            command -v ipset  &>/dev/null || { echo "[ERR] Command not found: 'ipset'"  1>&2; exit 1; }
-            command -v perl   &>/dev/null || { echo "[ERR] Command not found: 'perl'"   1>&2; exit 1; }
-            ;;
-        chnroute)
-            command -v curl     &>/dev/null || { echo "[WRN] Command not found: 'curl'"     1>&2;         }
-            command -v ipset    &>/dev/null || { echo "[ERR] Command not found: 'ipset'"    1>&2; exit 1; }
-            command -v chinadns &>/dev/null || { echo "[ERR] Command not found: 'chinadns'" 1>&2; exit 1; }
-            ;;
-    esac
+    
+    command -v curl     &>/dev/null || { echo "[WRN] Command not found: 'curl'"     1>&2;         }
+    command -v ipset    &>/dev/null || { echo "[ERR] Command not found: 'ipset'"    1>&2; exit 1; }
 }
 
 function update_chnonly {
     data="$(curl -4sSkL https://raw.github.com/felixonmars/dnsmasq-china-list/master/accelerated-domains.china.conf)"
     [ "$data" ] || { echo "update failed, please check the error output of curl"; exit 1; }
     echo "$data" | perl -ne 'm@/\K.+(?=/)@; print "$&\n"' >$file_gfwlist_txt
-}
-
-function update_gfwlist {
-    data="$(curl -4sSkL https://raw.github.com/gfwlist/gfwlist/master/gfwlist.txt)"
-    [ "$data" ] || { echo "update failed, please check the error output of curl"; exit 1; }
-    base64 -d       </dev/null &>/dev/null && base64='base64 -d'
-    base64 --decode </dev/null &>/dev/null && base64='base64 --decode'
-    [ "$base64" ] || { echo "[ERR] Command not found: 'base64'" 1>&2; exit 1; }
-    echo "$data" | $base64 | { perl -pe '
-    if (/URL Keywords/i) { $null = <> until $null =~ /^!/ }
-    s#^\s*+$|^!.*+$|^@@.*+$|^\[AutoProxy.*+$|^/.*/$##i;
-    s@^\|\|?|\|$@@;
-    s@^https?:/?/?@@i;
-    s@(?:/|%).*+$@@;
-    s@\*[^.*]++$@\n@;
-    s@^.*?\*[^.]*+(?=[^*]+$)@@;
-    s@^\*?\.|^.*\.\*?$@@;
-    s@(?=[^0-9a-zA-Z.-]).*+$@@;
-    s@^\d+\.\d+\.\d+\.\d+(?::\d+)?$@@;
-    s@^\s*+$@@'
-    echo 'twimg.edgesuite.net'
-    echo -e 'blogspot.ae\nblogspot.al\nblogspot.am\nblogspot.ba\nblogspot.be\nblogspot.bg\nblogspot.bj\nblogspot.ca\nblogspot.cat\nblogspot.cf\nblogspot.ch\nblogspot.cl\nblogspot.co.at\nblogspot.co.id\nblogspot.co.il\nblogspot.co.ke\nblogspot.com\nblogspot.com.ar\nblogspot.com.au\nblogspot.com.br\nblogspot.com.by\nblogspot.com.co\nblogspot.com.cy\nblogspot.com.ee\nblogspot.com.eg\nblogspot.com.es\nblogspot.com.mt\nblogspot.com.ng\nblogspot.com.tr\nblogspot.com.uy\nblogspot.co.nz\nblogspot.co.uk\nblogspot.co.za\nblogspot.cv\nblogspot.cz\nblogspot.de\nblogspot.dk\nblogspot.fi\nblogspot.fr\nblogspot.gr\nblogspot.hk\nblogspot.hr\nblogspot.hu\nblogspot.ie\nblogspot.in\nblogspot.is\nblogspot.it\nblogspot.jp\nblogspot.kr\nblogspot.li\nblogspot.lt\nblogspot.lu\nblogspot.md\nblogspot.mk\nblogspot.mr\nblogspot.mx\nblogspot.my\nblogspot.nl\nblogspot.no\nblogspot.pe\nblogspot.pt\nblogspot.qa\nblogspot.re\nblogspot.ro\nblogspot.rs\nblogspot.ru\nblogspot.se\nblogspot.sg\nblogspot.si\nblogspot.sk\nblogspot.sn\nblogspot.td\nblogspot.tw\nblogspot.ug\nblogspot.vn'
-    echo -e 'google.ac\ngoogle.ad\ngoogle.ae\ngoogle.al\ngoogle.am\ngoogle.as\ngoogle.at\ngoogle.az\ngoogle.ba\ngoogle.be\ngoogle.bf\ngoogle.bg\ngoogle.bi\ngoogle.bj\ngoogle.bs\ngoogle.bt\ngoogle.by\ngoogle.ca\ngoogle.cat\ngoogle.cc\ngoogle.cd\ngoogle.cf\ngoogle.cg\ngoogle.ch\ngoogle.ci\ngoogle.cl\ngoogle.cm\ngoogle.cn\ngoogle.co.ao\ngoogle.co.bw\ngoogle.co.ck\ngoogle.co.cr\ngoogle.co.id\ngoogle.co.il\ngoogle.co.in\ngoogle.co.jp\ngoogle.co.ke\ngoogle.co.kr\ngoogle.co.ls\ngoogle.com\ngoogle.co.ma\ngoogle.com.af\ngoogle.com.ag\ngoogle.com.ai\ngoogle.com.ar\ngoogle.com.au\ngoogle.com.bd\ngoogle.com.bh\ngoogle.com.bn\ngoogle.com.bo\ngoogle.com.br\ngoogle.com.bz\ngoogle.com.co\ngoogle.com.cu\ngoogle.com.cy\ngoogle.com.do\ngoogle.com.ec\ngoogle.com.eg\ngoogle.com.et\ngoogle.com.fj\ngoogle.com.gh\ngoogle.com.gi\ngoogle.com.gt\ngoogle.com.hk\ngoogle.com.jm\ngoogle.com.kh\ngoogle.com.kw\ngoogle.com.lb\ngoogle.com.lc\ngoogle.com.ly\ngoogle.com.mm\ngoogle.com.mt\ngoogle.com.mx\ngoogle.com.my\ngoogle.com.na\ngoogle.com.nf\ngoogle.com.ng\ngoogle.com.ni\ngoogle.com.np\ngoogle.com.om\ngoogle.com.pa\ngoogle.com.pe\ngoogle.com.pg\ngoogle.com.ph\ngoogle.com.pk\ngoogle.com.pr\ngoogle.com.py\ngoogle.com.qa\ngoogle.com.sa\ngoogle.com.sb\ngoogle.com.sg\ngoogle.com.sl\ngoogle.com.sv\ngoogle.com.tj\ngoogle.com.tr\ngoogle.com.tw\ngoogle.com.ua\ngoogle.com.uy\ngoogle.com.vc\ngoogle.com.vn\ngoogle.co.mz\ngoogle.co.nz\ngoogle.co.th\ngoogle.co.tz\ngoogle.co.ug\ngoogle.co.uk\ngoogle.co.uz\ngoogle.co.ve\ngoogle.co.vi\ngoogle.co.za\ngoogle.co.zm\ngoogle.co.zw\ngoogle.cv\ngoogle.cz\ngoogle.de\ngoogle.dj\ngoogle.dk\ngoogle.dm\ngoogle.dz\ngoogle.ee\ngoogle.es\ngoogle.fi\ngoogle.fm\ngoogle.fr\ngoogle.ga\ngoogle.ge\ngoogle.gf\ngoogle.gg\ngoogle.gl\ngoogle.gm\ngoogle.gp\ngoogle.gr\ngoogle.gy\ngoogle.hn\ngoogle.hr\ngoogle.ht\ngoogle.hu\ngoogle.ie\ngoogle.im\ngoogle.io\ngoogle.iq\ngoogle.is\ngoogle.it\ngoogle.je\ngoogle.jo\ngoogle.kg\ngoogle.ki\ngoogle.kz\ngoogle.la\ngoogle.li\ngoogle.lk\ngoogle.lt\ngoogle.lu\ngoogle.lv\ngoogle.md\ngoogle.me\ngoogle.mg\ngoogle.mk\ngoogle.ml\ngoogle.mn\ngoogle.ms\ngoogle.mu\ngoogle.mv\ngoogle.mw\ngoogle.ne\ngoogle.net\ngoogle.nl\ngoogle.no\ngoogle.nr\ngoogle.nu\ngoogle.org\ngoogle.pl\ngoogle.pn\ngoogle.ps\ngoogle.pt\ngoogle.ro\ngoogle.rs\ngoogle.ru\ngoogle.rw\ngoogle.sc\ngoogle.se\ngoogle.sh\ngoogle.si\ngoogle.sk\ngoogle.sm\ngoogle.sn\ngoogle.so\ngoogle.sr\ngoogle.st\ngoogle.td\ngoogle.tg\ngoogle.tk\ngoogle.tl\ngoogle.tm\ngoogle.tn\ngoogle.to\ngoogle.tt\ngoogle.vg\ngoogle.vu\ngoogle.ws'
-    } | sort | uniq >$file_gfwlist_txt
 }
 
 function update_chnroute {
@@ -84,75 +47,7 @@ function start_proxy {
 }
 
 function start_resolver {
-    for server in "${proxy_server[@]}"; do
-        if [ $(grep -Ec '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' <<<"$server") -eq 0 ]; then
-            server_addrs+=("/$server/$(ping -nq -c1 -t1 -W1 $server | head -n1 | awk -F'[()]' '{print $2}')")
-        fi
-    done
-case "$mode" in
-global)
-    dnsmasq -C <(cat <<EOF
-$([ "$dnsmasq_log_enable" = 'true' ] && echo 'log-queries')
-log-facility = $dnsmasq_log_file
-log-async = 20
-domain-needed
-cache-size = $dnsmasq_cache_size
-$([ $(dnsmasq --help | grep -c min-cache-ttl) -ne 0 ] && echo "min-cache-ttl = $dnsmasq_cache_time")
-no-negcache
-no-resolv
-port = 60053
-server = ${dns_remote/:/#}
-$(for server_addr in "${server_addrs[@]}"; do echo "address = $server_addr"; done)
-EOF
-)
-    ;;
-gfwlist)
-    dnsmasq -C <(cat <<EOF
-$([ "$dnsmasq_log_enable" = 'true' ] && echo 'log-queries')
-log-facility = $dnsmasq_log_file
-log-async = 20
-domain-needed
-cache-size = $dnsmasq_cache_size
-$([ $(dnsmasq --help | grep -c min-cache-ttl) -ne 0 ] && echo "min-cache-ttl = $dnsmasq_cache_time")
-no-negcache
-no-resolv
-port = 60053
-server = $dns_direct
-$(for server_addr in "${server_addrs[@]}"; do echo "address = $server_addr"; done)
-$(perl -pe "s@^.*+\$@server=/$&/${dns_remote/:/#}\nipset=/$&/gfwlist@" $file_gfwlist_txt <(
-perl -ne 'print unless m@^\s|\s\n$|^#|^\d++\.\d++\.\d++\.\d++(?:/\d++)?$@' $file_gfwlist_ext
-))
-EOF
-)
-    ;;
-chnroute)
-    temp_chnroute_txt=$(mktemp)
-    cat $file_chnroute_txt >$temp_chnroute_txt
-    echo "$dns_direct/32" >>$temp_chnroute_txt
-    for intranet in "${ipts_intranet[@]}"; do echo "$intranet" >>$temp_chnroute_txt; done
-
-    chinadns_params="-b 0.0.0.0 -p 65353 -s $dns_direct,$dns_remote -c $temp_chnroute_txt -y 0"
-    [ "$chinadns_mutation" = 'true' ] && chinadns_params+=' -m'
-    [ "$chinadns_verbose"  = 'true' ] && chinadns_params+=' -v'
-
-    (chinadns $chinadns_params </dev/null &>>$chinadns_logfile &)
-
-    dnsmasq -C <(cat <<EOF
-$([ "$dnsmasq_log_enable" = 'true' ] && echo 'log-queries')
-log-facility = $dnsmasq_log_file
-log-async = 20
-domain-needed
-cache-size = $dnsmasq_cache_size
-$([ $(dnsmasq --help | grep -c min-cache-ttl) -ne 0 ] && echo "min-cache-ttl = $dnsmasq_cache_time")
-no-negcache
-no-resolv
-port = 60053
-server = 127.0.0.1#65353
-$(for server_addr in "${server_addrs[@]}"; do echo "address = $server_addr"; done)
-EOF
-)
-    ;;
-esac
+    echo "start_resolver"
 }
 
 function start_iptables {
@@ -205,41 +100,6 @@ function start_iptables {
 
 if [ "$proxy_tproxy" = 'true' ]; then
 case "$mode" in
-gfwlist)
-    ipset -N gfwlist hash:net &>/dev/null
-    perl -ne 'print if m@^\d++\.\d++\.\d++\.\d++(?:/\d++)?$@' $file_gfwlist_ext | xargs -n1 ipset -A gfwlist &>/dev/null
-
-    iptables -t mangle -N SETMARK
-    if ! [ "$proxy_dports" ]; then
-        for server in "${proxy_server[@]}"; do
-            iptables -t mangle -A SETMARK -d $server -j RETURN
-        done
-    else
-        for server in "${proxy_server[@]}"; do
-            iptables -t mangle -A SETMARK -d $server -p tcp -m multiport --dports $proxy_dports -j RETURN
-            iptables -t mangle -A SETMARK -d $server -p udp -m multiport --dports $proxy_dports -j RETURN
-        done
-    fi
-    iptables -t mangle -A SETMARK -p udp -d ${dns_remote%:*}     -j MARK --set-mark $ipts_rt_mark
-    iptables -t mangle -A SETMARK -m set --match-set gfwlist dst -j MARK --set-mark $ipts_rt_mark
-
-    iptables -t mangle -A SSTP_OUT -p tcp -j SETMARK
-    iptables -t mangle -A SSTP_OUT -p udp -j SETMARK
-    iptables -t nat    -A SSTP_OUT -p udp -d 127.0.0.1 --dport 53 -j REDIRECT --to-ports 60053
-
-    for intranet in "${ipts_intranet[@]}"; do
-        iptables -t mangle -A SSTP_PRE -p udp -s $intranet --dport 53 -m mark ! --mark $ipts_rt_mark -j ACCEPT
-        iptables -t nat    -A SSTP_PRE -p udp -s $intranet --dport 53 -m mark ! --mark $ipts_rt_mark -j REDIRECT --to-ports 60053
-
-        iptables -t mangle -A SSTP_PRE -p tcp -s $intranet            -m mark ! --mark $ipts_rt_mark -j SETMARK
-        iptables -t mangle -A SSTP_PRE -p udp -s $intranet            -m mark ! --mark $ipts_rt_mark -j SETMARK
-
-        check_snat_rule
-    done
-
-    iptables -t mangle -A SSTP_PRE -m mark --mark $ipts_rt_mark -p tcp -j TPROXY --on-ip 127.0.0.1 --on-port $proxy_tcport
-    iptables -t mangle -A SSTP_PRE -m mark --mark $ipts_rt_mark -p udp -j TPROXY --on-ip 127.0.0.1 --on-port $proxy_udport
-    ;;
 global|chnroute)
     iptables -t mangle -N SETMARK
     iptables -t mangle -A SETMARK -d 0/8        -j RETURN
@@ -290,39 +150,6 @@ global|chnroute)
 esac
 else
 case "$mode" in
-gfwlist)
-    ipset -N gfwlist hash:net &>/dev/null
-    perl -ne 'print if m@^\d++\.\d++\.\d++\.\d++(?:/\d++)?$@' $file_gfwlist_ext | xargs -n1 ipset -A gfwlist &>/dev/null
-
-    iptables -t nat -N TCPCHAIN
-    for server in "${proxy_server[@]}"; do
-        iptables -t nat -A TCPCHAIN -d $server $([ "$proxy_dports" ] && echo "-p tcp -m multiport --dports $proxy_dports") -j RETURN
-    done
-    iptables -t nat -A TCPCHAIN -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports $proxy_tcport
-
-    iptables -t mangle -N UDPCHAIN
-    for server in "${proxy_server[@]}"; do
-        iptables -t mangle -A UDPCHAIN -d $server $([ "$proxy_dports" ] && echo "-p udp -m multiport --dports $proxy_dports") -j RETURN
-    done
-    iptables -t mangle -A UDPCHAIN -d ${dns_remote%:*}            -j MARK --set-mark $ipts_rt_mark
-    iptables -t mangle -A UDPCHAIN -m set --match-set gfwlist dst -j MARK --set-mark $ipts_rt_mark
-
-    iptables -t nat    -A SSTP_OUT -p tcp -j TCPCHAIN
-    iptables -t mangle -A SSTP_OUT -p udp -j UDPCHAIN
-    iptables -t nat    -A SSTP_OUT -p udp -d 127.0.0.1 --dport 53 -j REDIRECT --to-ports 60053
-
-    for intranet in "${ipts_intranet[@]}"; do
-        iptables -t mangle -A SSTP_PRE -p udp -s $intranet --dport 53 -m mark ! --mark $ipts_rt_mark -j ACCEPT
-        iptables -t nat    -A SSTP_PRE -p udp -s $intranet --dport 53 -m mark ! --mark $ipts_rt_mark -j REDIRECT --to-ports 60053
-
-        iptables -t nat    -A SSTP_PRE -p tcp -s $intranet                                -j TCPCHAIN
-        iptables -t mangle -A SSTP_PRE -p udp -s $intranet -m mark ! --mark $ipts_rt_mark -j UDPCHAIN
-
-        check_snat_rule
-    done
-
-    iptables -t mangle -A SSTP_PRE -m mark --mark $ipts_rt_mark -p udp -j TPROXY --on-ip 127.0.0.1 --on-port $proxy_udport
-    ;;
 global|chnroute)
     iptables -t nat -N TCPCHAIN
     iptables -t nat -A TCPCHAIN -d 0/8        -j RETURN
@@ -387,7 +214,6 @@ fi
 }
 
 function start_dnsproxy {
-    if [ "$dns_modify" = 'false' ]; then
         while umount /etc/resolv.conf; do :; done &>/dev/null
         resolv=$(mktemp)
         chmod 0644 $resolv
@@ -397,26 +223,17 @@ nameserver 127.0.0.1
 EOF
         mount -o bind $resolv /etc/resolv.conf
         rm -f $resolv &>/dev/null
-    else
-        echo "# Generated by ss-tproxy at $(date '+%F %T')" >/etc/resolv.conf
-        echo "nameserver 127.0.0.1" >>/etc/resolv.conf
-    fi
 }
 
 function start {
     [ "$(type -t pre_start)" = 'function' ] && pre_start
 
-    if [ "$dns_modify" = 'false' ]; then
-        while umount /etc/resolv.conf; do :; done &>/dev/null
-    else
-        echo "# Generated by ss-tproxy at $(date '+%F %T')" >/etc/resolv.conf
-        echo "nameserver $dns_direct" >>/etc/resolv.conf
-    fi
+    while umount /etc/resolv.conf; do :; done &>/dev/null
 
     start_proxy
     start_resolver
     start_iptables
-    start_dnsproxy
+    #start_dnsproxy
 
     rm -f $temp_chnroute_txt &>/dev/null
 
@@ -426,12 +243,8 @@ function start {
 function stop {
     [ "$(type -t pre_stop)" = 'function' ] && pre_stop
 
-    if [ "$dns_modify" = 'false' ]; then
-        while umount /etc/resolv.conf; do :; done &>/dev/null
-    else
-        echo "# Generated by ss-tproxy at $(date '+%F %T')" >/etc/resolv.conf
-        echo "nameserver $dns_direct" >>/etc/resolv.conf
-    fi
+    # Stop DNS
+    # while umount /etc/resolv.conf; do :; done &>/dev/null
 
     iptables -t mangle -D OUTPUT     -j SSTP_OUT &>/dev/null
     iptables -t mangle -D PREROUTING -j SSTP_PRE &>/dev/null
@@ -468,7 +281,7 @@ function stop {
     ip route flush table $ipts_rt_tab &>/dev/null
 
     eval "$proxy_kilcmd" &>/dev/null
-    kill -9 $(pidof 'chinadns') &>/dev/null
+    # kill -9 $(pidof 'chinadns') &>/dev/null # Kill DNS Here
 
     if [ "$opts_ss_netstat" != "netstat" -a "$(command -v ss &>/dev/null && echo 'true')" ]; then
         ss -lnpu | awk -F, '/:60053[ \t].+"dnsmasq"/ {print $(NF-1)}' | awk -F= '{print $2}' | sort | uniq | xargs kill -9 &>/dev/null
@@ -485,20 +298,15 @@ case "$mode" in
         echo "mode:     global"
         [ $($netstat -lnpt | grep -E ":$proxy_tcport[ \t]"   | wc -l) -ne 0 ] && echo -e "pxy/tcp:  \e[32m[running]\e[0m" || echo -e "pxy/tcp:  \e[35m[stopped]\e[0m"
         [ $($netstat -lnpu | grep -E ":$proxy_udport[ \t]"   | wc -l) -ne 0 ] && echo -e "pxy/udp:  \e[32m[running]\e[0m" || echo -e "pxy/udp:  \e[35m[stopped]\e[0m"
-        [ $($netstat -lnpu | grep -E ":60053[ \t].+dnsmasq"  | wc -l) -ne 0 ] && echo -e "dnsmasq:  \e[32m[running]\e[0m" || echo -e "dnsmasq:  \e[35m[stopped]\e[0m"
-        ;;
-    gfwlist)
-        echo "mode:     gfwlist"
-        [ $($netstat -lnpt | grep -E ":$proxy_tcport[ \t]"   | wc -l) -ne 0 ] && echo -e "pxy/tcp:  \e[32m[running]\e[0m" || echo -e "pxy/tcp:  \e[35m[stopped]\e[0m"
-        [ $($netstat -lnpu | grep -E ":$proxy_udport[ \t]"   | wc -l) -ne 0 ] && echo -e "pxy/udp:  \e[32m[running]\e[0m" || echo -e "pxy/udp:  \e[35m[stopped]\e[0m"
-        [ $($netstat -lnpu | grep -E ":60053[ \t].+dnsmasq"  | wc -l) -ne 0 ] && echo -e "dnsmasq:  \e[32m[running]\e[0m" || echo -e "dnsmasq:  \e[35m[stopped]\e[0m"
+        #[ $($netstat -lnpu | grep -E ":60053[ \t].+dnsmasq"  | wc -l) -ne 0 ] && echo -e "dnsmasq:  \e[32m[running]\e[0m" || echo -e "dnsmasq:  \e[35m[stopped]\e[0m"
         ;;
     chnroute)
         echo "mode:     chnroute"
         [ $($netstat -lnpt | grep -E ":$proxy_tcport[ \t]"   | wc -l) -ne 0 ] && echo -e "pxy/tcp:  \e[32m[running]\e[0m" || echo -e "pxy/tcp:  \e[35m[stopped]\e[0m"
+        #netstat="netstat"
         [ $($netstat -lnpu | grep -E ":$proxy_udport[ \t]"   | wc -l) -ne 0 ] && echo -e "pxy/udp:  \e[32m[running]\e[0m" || echo -e "pxy/udp:  \e[35m[stopped]\e[0m"
-        [ $($netstat -lnpu | grep -E ":60053[ \t].+dnsmasq"  | wc -l) -ne 0 ] && echo -e "dnsmasq:  \e[32m[running]\e[0m" || echo -e "dnsmasq:  \e[35m[stopped]\e[0m"
-        [ $($netstat -lnpu | grep -E ":65353[ \t].+chinadns" | wc -l) -ne 0 ] && echo -e "chinadns: \e[32m[running]\e[0m" || echo -e "chinadns: \e[35m[stopped]\e[0m"
+        #[ $($netstat -lnpu | grep -E ":60053[ \t].+dnsmasq"  | wc -l) -ne 0 ] && echo -e "dnsmasq:  \e[32m[running]\e[0m" || echo -e "dnsmasq:  \e[35m[stopped]\e[0m"
+        #[ $($netstat -lnpu | grep -E ":65353[ \t].+chinadns" | wc -l) -ne 0 ] && echo -e "chinadns: \e[32m[running]\e[0m" || echo -e "chinadns: \e[35m[stopped]\e[0m"
         ;;
 esac
 }
@@ -533,15 +341,10 @@ COMMAND := {
     show-iptables       show iptables rules
     flush-iptables      flush iptables rules
     flush-dnscache      flush dns cache
-    flush-gfwlist       flush ipset-gfwlist
-    update-chnonly      update chnonly
-    update-gfwlist      update gfwlist
     update-chnroute     update chnroute
     check-command       check commands
     help                show help and exit
 }
-Issues or Bug report: zfl9.com@gmail.com (Otokaze)
-See https://www.zfl9.com/ss-redir.html for more details
 EOF
 }
 
@@ -552,10 +355,7 @@ case $1 in
     r*)                 check_command; stop; status; echo; start; status;;
     show-iptables)      show_iptables;;
     flush-iptables)     flush_iptables;;
-    flush-gfwlist)      ipset -F gfwlist &>/dev/null;;
     flush-dnscache)     check_command; flush_dnscache;;
-    update-chnonly)     check_command; update_chnonly;;
-    update-gfwlist)     check_command; update_gfwlist;;
     update-chnroute)    check_command; update_chnroute;;
     c*)                 check_command;;
     h*)                 help;;
