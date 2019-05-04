@@ -34,14 +34,6 @@ function update_chnroute {
     for addr in "${reserved_address[@]}"; do echo "$addr" >>$file_chnroute_txt; done
 }
 
-function flush_dnscache {
-    if [ "$opts_ss_netstat" != "netstat" -a "$(command -v ss &>/dev/null && echo 'true')" ]; then
-        ss -lnpu | awk -F, '/:60053[ \t].+"dnsmasq"/ {print $(NF-1)}' | awk -F= '{print $2}' | sort | uniq | xargs kill -HUP &>/dev/null
-    else
-        netstat -lnpu | awk -F/ '/:60053[ \t].+dnsmasq/ {print $(NF-1)}' | awk '{print $NF}' | sort | uniq | xargs kill -HUP &>/dev/null
-    fi
-}
-
 function start_proxy {
     eval "$proxy_runcmd"
 }
@@ -132,11 +124,11 @@ global|chnroute)
 
     iptables -t mangle -A SSTP_OUT -p tcp -j SETMARK
     iptables -t mangle -A SSTP_OUT -p udp -j SETMARK
-    iptables -t nat    -A SSTP_OUT -p udp -d 127.0.0.1 --dport 53 -j REDIRECT --to-ports 60053
+    #iptables -t nat    -A SSTP_OUT -p udp -d 127.0.0.1 --dport 53 -j REDIRECT --to-ports 60053
 
     for intranet in "${ipts_intranet[@]}"; do
         iptables -t mangle -A SSTP_PRE -p udp -s $intranet --dport 53 -m mark ! --mark $ipts_rt_mark -j ACCEPT
-        iptables -t nat    -A SSTP_PRE -p udp -s $intranet --dport 53 -m mark ! --mark $ipts_rt_mark -j REDIRECT --to-ports 60053
+        #iptables -t nat    -A SSTP_PRE -p udp -s $intranet --dport 53 -m mark ! --mark $ipts_rt_mark -j REDIRECT --to-ports 60053
 
         iptables -t mangle -A SSTP_PRE -p tcp -s $intranet            -m mark ! --mark $ipts_rt_mark -j SETMARK
         iptables -t mangle -A SSTP_PRE -p udp -s $intranet            -m mark ! --mark $ipts_rt_mark -j SETMARK
@@ -195,11 +187,11 @@ global|chnroute)
 
     iptables -t nat    -A SSTP_OUT -p tcp -j TCPCHAIN
     iptables -t mangle -A SSTP_OUT -p udp -j UDPCHAIN
-    iptables -t nat    -A SSTP_OUT -p udp -d 127.0.0.1 --dport 53 -j REDIRECT --to-ports 60053
+    #iptables -t nat    -A SSTP_OUT -p udp -d 127.0.0.1 --dport 53 -j REDIRECT --to-ports 60053
 
     for intranet in "${ipts_intranet[@]}"; do
         iptables -t mangle -A SSTP_PRE -p udp -s $intranet --dport 53 -m mark ! --mark $ipts_rt_mark -j ACCEPT
-        iptables -t nat    -A SSTP_PRE -p udp -s $intranet --dport 53 -m mark ! --mark $ipts_rt_mark -j REDIRECT --to-ports 60053
+        #iptables -t nat    -A SSTP_PRE -p udp -s $intranet --dport 53 -m mark ! --mark $ipts_rt_mark -j REDIRECT --to-ports 60053
 
         iptables -t nat    -A SSTP_PRE -p tcp -s $intranet                                -j TCPCHAIN
         iptables -t mangle -A SSTP_PRE -p udp -s $intranet -m mark ! --mark $ipts_rt_mark -j UDPCHAIN
@@ -303,7 +295,7 @@ case "$mode" in
     chnroute)
         echo "mode:     chnroute"
         [ $($netstat -lnpt | grep -E ":$proxy_tcport[ \t]"   | wc -l) -ne 0 ] && echo -e "pxy/tcp:  \e[32m[running]\e[0m" || echo -e "pxy/tcp:  \e[35m[stopped]\e[0m"
-        #netstat="netstat"
+        netstat="netstat"
         [ $($netstat -lnpu | grep -E ":$proxy_udport[ \t]"   | wc -l) -ne 0 ] && echo -e "pxy/udp:  \e[32m[running]\e[0m" || echo -e "pxy/udp:  \e[35m[stopped]\e[0m"
         #[ $($netstat -lnpu | grep -E ":60053[ \t].+dnsmasq"  | wc -l) -ne 0 ] && echo -e "dnsmasq:  \e[32m[running]\e[0m" || echo -e "dnsmasq:  \e[35m[stopped]\e[0m"
         #[ $($netstat -lnpu | grep -E ":65353[ \t].+chinadns" | wc -l) -ne 0 ] && echo -e "chinadns: \e[32m[running]\e[0m" || echo -e "chinadns: \e[35m[stopped]\e[0m"
@@ -340,7 +332,6 @@ COMMAND := {
     status              status of ss-tproxy
     show-iptables       show iptables rules
     flush-iptables      flush iptables rules
-    flush-dnscache      flush dns cache
     update-chnroute     update chnroute
     check-command       check commands
     help                show help and exit
@@ -355,7 +346,6 @@ case $1 in
     r*)                 check_command; stop; status; echo; start; status;;
     show-iptables)      show_iptables;;
     flush-iptables)     flush_iptables;;
-    flush-dnscache)     check_command; flush_dnscache;;
     update-chnroute)    check_command; update_chnroute;;
     c*)                 check_command;;
     h*)                 help;;
