@@ -35,7 +35,7 @@ function update_chnroute {
 }
 
 function start_proxy {
-    eval "$proxy_runcmd"
+	eval "$proxy_runcmd" &>/dev/null
 }
 
 function start_resolver {
